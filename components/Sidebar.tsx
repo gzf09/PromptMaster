@@ -3,11 +3,47 @@ import { Category, Language, User, Theme } from '../types';
 import { Icons } from './Icon';
 import { t } from '../utils/translations';
 
+const ICON_OPTIONS = [
+  { name: 'Tag', icon: Icons.Tag },
+  { name: 'Code', icon: Icons.Code },
+  { name: 'PenTool', icon: Icons.PenTool },
+  { name: 'Image', icon: Icons.Image },
+  { name: 'BarChart', icon: Icons.BarChart },
+  { name: 'Book', icon: Icons.Book },
+  { name: 'Star', icon: Icons.Star },
+  { name: 'Globe', icon: Icons.Globe },
+  { name: 'User', icon: Icons.User },
+  { name: 'Sparkles', icon: Icons.Sparkles },
+  { name: 'Folder', icon: Icons.Folder },
+  { name: 'Shield', icon: Icons.Shield },
+] as const;
+
+const SYSTEM_ICON_MAP: Record<string, React.FC<any>> = {
+  coding: Icons.Code,
+  writing: Icons.PenTool,
+  'image-gen': Icons.Image,
+  'data-analysis': Icons.BarChart,
+  learning: Icons.Book,
+};
+
+function getCategoryIcon(cat: Category): React.FC<any> {
+  // System categories use hardcoded mapping
+  if (cat.type === 'system' && SYSTEM_ICON_MAP[cat.id]) {
+    return SYSTEM_ICON_MAP[cat.id];
+  }
+  // User categories use stored icon name
+  if (cat.icon) {
+    const found = ICON_OPTIONS.find(o => o.name === cat.icon);
+    if (found) return found.icon;
+  }
+  return Icons.Tag;
+}
+
 interface SidebarProps {
   categories: Category[];
   selectedCategoryId: string;
   onSelectCategory: (categoryId: string) => void;
-  onAddCategory: (name: string) => void;
+  onAddCategory: (name: string, icon?: string) => void;
   onDeleteCategory: (id: string) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -22,13 +58,13 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  categories, 
-  selectedCategoryId, 
-  onSelectCategory, 
+export const Sidebar: React.FC<SidebarProps> = ({
+  categories,
+  selectedCategoryId,
+  onSelectCategory,
   onAddCategory,
   onDeleteCategory,
-  isOpen, 
+  isOpen,
   setIsOpen,
   lang,
   setLang,
@@ -42,16 +78,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState('Tag');
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const isGuest = currentUser.role === 'guest';
+  const isAdmin = currentUser.role === 'admin';
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newCategoryName.trim()) {
-      onAddCategory(newCategoryName.trim());
+      onAddCategory(newCategoryName.trim(), newCategoryIcon);
       setNewCategoryName('');
+      setNewCategoryIcon('Tag');
       setIsAdding(false);
+      setShowIconPicker(false);
     }
   };
 
@@ -62,6 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
+
+  const SelectedIcon = ICON_OPTIONS.find(o => o.name === newCategoryIcon)?.icon || Icons.Tag;
 
   const sidebarClass = `
     fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out
@@ -74,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"
           onClick={() => setIsOpen(false)}
         />
@@ -106,8 +149,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setIsOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                        ${selectedCategoryId === 'all' 
-                        ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' 
+                        ${selectedCategoryId === 'all'
+                        ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
                         }
                     `}
@@ -126,8 +169,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setIsOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                    ${selectedCategoryId === 'community' 
-                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                    ${selectedCategoryId === 'community'
+                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
                     }
                 `}
@@ -146,8 +189,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setIsOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                        ${selectedCategoryId === 'favorites' 
-                        ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' 
+                        ${selectedCategoryId === 'favorites'
+                        ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
                         }
                     `}
@@ -165,10 +208,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between px-2 mb-2">
                 <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t(lang, 'categories')}</h3>
                 {!isGuest && (
-                    <button 
+                    <button
                         onClick={() => setIsAdding(!isAdding)}
                         className="text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
-                        title={t(lang, 'createPrompt')} 
+                        title={t(lang, 'addCategory')}
                     >
                         <Icons.Plus size={16} />
                     </button>
@@ -177,7 +220,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Category List */}
             <div className="space-y-0.5">
-                {categories.map((cat) => (
+                {categories.map((cat) => {
+                    const CatIcon = getCategoryIcon(cat);
+                    return (
                     <div key={cat.id} className="group flex items-center">
                         <button
                         onClick={() => {
@@ -185,23 +230,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             setIsOpen(false);
                         }}
                         className={`flex-1 flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                            ${selectedCategoryId === cat.id 
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' 
+                            ${selectedCategoryId === cat.id
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                             : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
                             }
                         `}
                         >
-                            {cat.id === 'coding' ? <Icons.Code size={16} /> :
-                             cat.id === 'writing' ? <Icons.PenTool size={16} /> :
-                             cat.id === 'image-gen' ? <Icons.Image size={16} /> :
-                             cat.id === 'data-analysis' ? <Icons.BarChart size={16} /> :
-                             cat.id === 'learning' ? <Icons.Book size={16} /> :
-                             <Icons.Tag size={16} />
-                            }
+                            <CatIcon size={16} />
                             <span className="truncate">{cat.name}</span>
                         </button>
-                        
-                        {!isGuest && cat.id !== 'other' && (
+
+                        {isAdmin && cat.id !== 'other' && (
                              <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -216,24 +255,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                         )}
                     </div>
-                ))}
+                    );
+                })}
 
                 {isAdding && !isGuest && (
                     <form onSubmit={handleAddSubmit} className="px-2 py-1">
                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg p-1 border border-indigo-500/50">
+                            <button
+                              type="button"
+                              onClick={() => setShowIconPicker(!showIconPicker)}
+                              className="p-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors shrink-0"
+                              title={t(lang, 'selectIcon')}
+                            >
+                              <SelectedIcon size={16} />
+                            </button>
                             <input
                                 autoFocus
                                 type="text"
                                 value={newCategoryName}
                                 onChange={(e) => setNewCategoryName(e.target.value)}
                                 placeholder={t(lang, 'addCategoryPlaceholder')}
-                                className="w-full bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none px-2"
-                                onBlur={() => !newCategoryName && setIsAdding(false)}
+                                className="w-full bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none"
+                                onBlur={() => {
+                                  if (!newCategoryName && !showIconPicker) {
+                                    setIsAdding(false);
+                                  }
+                                }}
                             />
-                            <button type="submit" className="text-indigo-600 dark:text-indigo-400 px-1">
+                            <button type="submit" className="text-indigo-600 dark:text-indigo-400 px-1 shrink-0">
                                 <Icons.Check size={14} />
                             </button>
                         </div>
+                        {showIconPicker && (
+                          <div className="mt-2 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg grid grid-cols-6 gap-1">
+                            {ICON_OPTIONS.map(({ name, icon: IconComp }) => (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => {
+                                  setNewCategoryIcon(name);
+                                  setShowIconPicker(false);
+                                }}
+                                className={`p-2 rounded-md transition-colors flex items-center justify-center
+                                  ${newCategoryIcon === name
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                  }
+                                `}
+                                title={name}
+                              >
+                                <IconComp size={16} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
                     </form>
                 )}
             </div>
@@ -241,14 +316,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom Section */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 mt-auto shrink-0 bg-white dark:bg-slate-950 space-y-3">
-             
+
              {/* User Switcher */}
              <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors border border-transparent"
                 >
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md 
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md
                         ${isGuest ? 'bg-slate-500' : 'bg-indigo-600 shadow-indigo-500/20'}`}>
                         {currentUser.avatar}
                     </div>
@@ -310,7 +385,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 ))}
                             </div>
                         )}
-                        
+
                         <button
                             onClick={() => {
                                 onLogout();
@@ -326,7 +401,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
              </div>
 
              <div className="flex items-center gap-2">
-                 <button 
+                 <button
                     onClick={toggleLanguage}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
                  >

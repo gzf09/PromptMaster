@@ -71,12 +71,23 @@ const migrations: Migration[] = [
       }
     },
   },
-  // Future migration example:
-  // {
-  //   version: 2,
-  //   description: 'Add rating field to prompts',
-  //   migrate: () => { ... },
-  // },
+  {
+    version: 2,
+    description: 'Add icon field to categories',
+    migrate: () => {
+      const rawCats = localStorage.getItem('promptmaster_categories');
+      if (rawCats) {
+        try {
+          const cats = JSON.parse(rawCats);
+          const migrated = cats.map((c: any) => ({
+            ...c,
+            icon: c.icon || 'Tag',
+          }));
+          localStorage.setItem('promptmaster_categories', JSON.stringify(migrated));
+        } catch {}
+      }
+    },
+  },
 ];
 
 function getCurrentVersion(): number {

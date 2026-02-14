@@ -89,7 +89,10 @@ export const translations = {
     defaultPasswordNotice: '默认密码: 123456',
     createdAt: '创建时间',
     updatedAt: '更新时间',
-    tagInputPlaceholder: '输入标签，按回车或逗号分隔'
+    tagInputPlaceholder: '输入标签，按回车或逗号分隔',
+    allCategories: '全部分类',
+    selectIcon: '选择图标',
+    addCategory: '添加分类'
   },
   en: {
     appTitle: 'PromptMaster',
@@ -179,7 +182,10 @@ export const translations = {
     defaultPasswordNotice: 'Default password: 123456',
     createdAt: 'Created',
     updatedAt: 'Updated',
-    tagInputPlaceholder: 'Add tags, press Enter or comma to separate'
+    tagInputPlaceholder: 'Add tags, press Enter or comma to separate',
+    allCategories: 'All Categories',
+    selectIcon: 'Select icon',
+    addCategory: 'Add Category'
   }
 };
 

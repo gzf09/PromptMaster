@@ -118,6 +118,7 @@ const App: React.FC = () => {
   // UI State
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategoryId, setSearchCategoryId] = useState<string>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isUserMgmtOpen, setIsUserMgmtOpen] = useState(false);
@@ -216,7 +217,7 @@ const App: React.FC = () => {
     ));
   };
 
-  const handleAddCategory = (name: string) => {
+  const handleAddCategory = (name: string, icon?: string) => {
     if (!currentUser || currentUser.role === 'guest') return;
     if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
         addToast(t(lang, 'categoryExists'), 'error');
@@ -226,6 +227,7 @@ const App: React.FC = () => {
         id: generateId(),
         name,
         type: 'user',
+        icon: icon || 'Tag',
         userId: currentUser.id
     };
     setCategories(prev => [...prev, newCategory]);
@@ -233,7 +235,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteCategory = (id: string) => {
-    if (!currentUser || currentUser.role === 'guest') return;
+    if (!currentUser || currentUser.role !== 'admin') return;
     setPrompts(prev => prev.map(p => {
         if (p.categoryId === id) {
             return { ...p, categoryId: 'other' };
@@ -363,14 +365,17 @@ const App: React.FC = () => {
 
       // 3. Search Filter
       const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
-        prompt.title.toLowerCase().includes(searchLower) || 
+      const matchesSearch =
+        prompt.title.toLowerCase().includes(searchLower) ||
         prompt.content.toLowerCase().includes(searchLower) ||
         prompt.tags.some(tag => tag.toLowerCase().includes(searchLower));
-      
-      return matchesCategory && matchesSearch;
+
+      // 4. Search Category Filter
+      const matchesSearchCategory = searchCategoryId === 'all' || prompt.categoryId === searchCategoryId;
+
+      return matchesCategory && matchesSearch && matchesSearchCategory;
     });
-  }, [prompts, selectedCategoryId, searchQuery, currentUser]);
+  }, [prompts, selectedCategoryId, searchQuery, searchCategoryId, currentUser]);
 
   const currentCategoryName = useMemo(() => {
     if (selectedCategoryId === 'all') return t(lang, 'allPrompts');
@@ -430,14 +435,14 @@ const App: React.FC = () => {
         
         {/* Top Navigation / Search Bar */}
         <header className="h-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-8 z-20 shrink-0 sticky top-0">
-          <div className="flex items-center gap-4 flex-1">
-            <button 
+          <div className="flex items-center gap-3 flex-1">
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               <Icons.Menu />
             </button>
-            
+
             <div className="relative max-w-lg w-full hidden sm:block group">
               <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors w-5 h-5" />
               <input
@@ -447,6 +452,20 @@ const App: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-100 dark:bg-slate-900 border border-transparent dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 dark:focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-white outline-none transition-all placeholder-slate-500 shadow-inner focus:shadow-lg focus:shadow-indigo-500/10"
               />
+            </div>
+
+            <div className="relative hidden sm:block">
+              <select
+                value={searchCategoryId}
+                onChange={(e) => setSearchCategoryId(e.target.value)}
+                className="appearance-none bg-slate-100 dark:bg-slate-900 border border-transparent dark:border-slate-800 rounded-xl pl-3 pr-8 py-2.5 text-sm text-slate-900 dark:text-white outline-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              >
+                <option value="all">{t(lang, 'allCategories')}</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <Icons.ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none w-4 h-4" />
             </div>
           </div>
 
@@ -479,7 +498,7 @@ const App: React.FC = () => {
         </header>
         
          {/* Mobile Search Bar (Below Header) */}
-        <div className="sm:hidden px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div className="sm:hidden px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 space-y-3">
            <div className="relative w-full">
               <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input
@@ -489,6 +508,19 @@ const App: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-100 dark:bg-slate-900 border border-transparent rounded-lg pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
               />
+            </div>
+           <div className="relative w-full">
+              <select
+                value={searchCategoryId}
+                onChange={(e) => setSearchCategoryId(e.target.value)}
+                className="w-full appearance-none bg-slate-100 dark:bg-slate-900 border border-transparent rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-900 dark:text-white outline-none cursor-pointer"
+              >
+                <option value="all">{t(lang, 'allCategories')}</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <Icons.ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none w-4 h-4" />
             </div>
         </div>
 

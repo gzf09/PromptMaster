@@ -15,6 +15,7 @@ export interface Category {
   id: string;
   name: string;
   type: 'system' | 'user';
+  icon?: string; // Icon name from lucide-react
   userId?: string; // Optional: if created by a specific user
 }
 
