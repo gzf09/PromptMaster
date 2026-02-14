@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Prompt, Category, Language, Visibility, User } from '../types';
 import { Icons } from './Icon';
-import { optimizePromptWithAI } from '../services/geminiService';
 import { t } from '../utils/translations';
 import { generateId } from '../utils/generateId';
 
@@ -33,7 +32,6 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('private');
-  const [isOptimizing, setIsOptimizing] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -104,24 +102,6 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(t => t !== tagToRemove));
-  };
-
-  const handleOptimize = async () => {
-    if (!content.trim()) {
-      addToast(t(lang, 'contentRequired'), 'error');
-      return;
-    }
-    
-    setIsOptimizing(true);
-    try {
-      const optimized = await optimizePromptWithAI(content);
-      setContent(optimized);
-      addToast(t(lang, 'optimizationSuccess'), 'success');
-    } catch (error) {
-      addToast(t(lang, 'optimizationFail'), 'error');
-    } finally {
-      setIsOptimizing(false);
-    }
   };
 
   if (!isOpen) return null;
@@ -244,21 +224,8 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
 
             {/* Right Column: Content Editor (8 cols) */}
             <div className="md:col-span-8 flex flex-col h-full min-h-[400px]">
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3">
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t(lang, 'contentLabel')}</label>
-                <button
-                  onClick={handleOptimize}
-                  disabled={isOptimizing}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-md
-                    ${isOptimizing 
-                      ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-500/25 hover:scale-105 transform'
-                    }
-                  `}
-                >
-                  <Icons.Sparkles size={14} className={isOptimizing ? 'animate-spin' : ''} />
-                  {isOptimizing ? t(lang, 'optimizingBtn') : t(lang, 'optimizeBtn')}
-                </button>
               </div>
               <textarea
                 value={content}
