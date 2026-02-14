@@ -86,7 +86,10 @@ export const translations = {
     passwordChanged: '密码修改成功',
     passwordMismatch: '两次输入的密码不一致',
     loginFailed: '用户名或密码错误',
-    defaultPasswordNotice: '默认密码: 123456'
+    defaultPasswordNotice: '默认密码: 123456',
+    createdAt: '创建时间',
+    updatedAt: '更新时间',
+    tagInputPlaceholder: '输入标签，按回车或逗号分隔'
   },
   en: {
     appTitle: 'PromptMaster',
@@ -173,7 +176,10 @@ export const translations = {
     passwordChanged: 'Password changed successfully',
     passwordMismatch: 'Passwords do not match',
     loginFailed: 'Invalid username or password',
-    defaultPasswordNotice: 'Default password: 123456'
+    defaultPasswordNotice: 'Default password: 123456',
+    createdAt: 'Created',
+    updatedAt: 'Updated',
+    tagInputPlaceholder: 'Add tags, press Enter or comma to separate'
   }
 };
 

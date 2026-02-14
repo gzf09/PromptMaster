@@ -90,13 +90,30 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
     addToast(initialData ? t(lang, 'promptUpdated') : t(lang, 'promptSaved'), 'success');
   };
 
+  const addTags = (input: string) => {
+    const newTags = input
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t && !tags.includes(t));
+    if (newTags.length > 0) {
+      setTags(prev => [...prev, ...newTags]);
+    }
+    setTagInput('');
+  };
+
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
-      if (!tags.includes(tagInput.trim())) {
-        setTags([...tags, tagInput.trim()]);
-      }
-      setTagInput('');
+      addTags(tagInput);
+    }
+  };
+
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.includes(',')) {
+      addTags(value);
+    } else {
+      setTagInput(value);
     }
   };
 
@@ -214,9 +231,9 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
                 <input
                   type="text"
                   value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
+                  onChange={handleTagInputChange}
                   onKeyDown={handleAddTag}
-                  placeholder="Enter..."
+                  placeholder={t(lang, 'tagInputPlaceholder')}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none placeholder-slate-400 dark:placeholder-slate-600 shadow-sm"
                 />
               </div>
