@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Prompt, Category, Language, Visibility, User } from '../types';
 import { Icons } from './Icon';
 import { t } from '../utils/translations';
-import { generateId } from '../utils/generateId';
 
 interface PromptEditorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (prompt: Prompt) => void;
+  onSave: (promptData: {
+    id?: string;
+    title: string;
+    content: string;
+    description?: string;
+    categoryId: string;
+    tags: string[];
+    visibility: string;
+  }) => Promise<boolean>;
   initialData?: Prompt | null;
   categories: Category[];
   addToast: (msg: string, type: 'success' | 'error' | 'info') => void;
@@ -15,10 +22,10 @@ interface PromptEditorProps {
   currentUser: User;
 }
 
-export const PromptEditor: React.FC<PromptEditorProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
+export const PromptEditor: React.FC<PromptEditorProps> = ({
+  isOpen,
+  onClose,
+  onSave,
   initialData,
   categories,
   addToast,
@@ -32,6 +39,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('private');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -58,7 +66,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
     setVisibility('private');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
       addToast(t(lang, 'titleRequired'), 'error');
       return;
@@ -69,25 +77,26 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
         return;
     }
 
-    const newPrompt: Prompt = {
-      id: initialData ? initialData.id : generateId(),
-      title,
-      content,
-      description,
-      categoryId,
-      tags,
-      createdAt: initialData ? initialData.createdAt : Date.now(),
-      updatedAt: Date.now(),
-      isFavorite: initialData ? initialData.isFavorite : false,
-      userId: initialData ? initialData.userId : currentUser.id,
-      authorName: initialData ? initialData.authorName : currentUser.name,
-      visibility
-    };
+    setSaving(true);
+    try {
+      const success = await onSave({
+        id: initialData?.id,
+        title,
+        content,
+        description,
+        categoryId,
+        tags,
+        visibility,
+      });
 
-    onSave(newPrompt);
-    onClose();
-    resetForm();
-    addToast(initialData ? t(lang, 'promptUpdated') : t(lang, 'promptSaved'), 'success');
+      if (success) {
+        onClose();
+        resetForm();
+        addToast(initialData ? t(lang, 'promptUpdated') : t(lang, 'promptSaved'), 'success');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addTags = (input: string) => {
@@ -126,7 +135,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-colors duration-200">
-        
+
         {/* Header */}
         <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white/50 dark:bg-slate-900/50 backdrop-blur">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
@@ -142,7 +151,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50 dark:bg-slate-950">
-          
+
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 h-full">
             {/* Left Column: Metadata (4 cols) */}
             <div className="md:col-span-4 space-y-5">
@@ -265,10 +274,11 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-3 rounded-xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 dark:shadow-indigo-900/30 transition-all transform hover:translate-y-px flex items-center gap-2"
+            disabled={saving}
+            className="px-6 py-3 rounded-xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 dark:shadow-indigo-900/30 transition-all transform hover:translate-y-px flex items-center gap-2 disabled:opacity-50"
           >
             <Icons.Save size={18} />
-            {t(lang, 'saveBtn')}
+            {saving ? '...' : t(lang, 'saveBtn')}
           </button>
         </div>
       </div>

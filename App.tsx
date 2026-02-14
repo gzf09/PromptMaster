@@ -10,124 +10,34 @@ import { ChangePassword } from './components/ChangePassword';
 import { Prompt, Category, ToastMessage, ToastType, Language, User, Theme, UserRole } from './types';
 import { t } from './utils/translations';
 import { generateId } from './utils/generateId';
-import { runMigrations } from './utils/migrations';
-
-// Run data migrations before any React state initialization
-runMigrations();
-
-// Mock Users with Roles and Passwords
-const MOCK_USERS_INIT: User[] = [
-  { id: 'user1', name: 'Admin User', avatar: 'AU', role: 'admin', password: 'password', isFirstLogin: false },
-  { id: 'user2', name: 'Jane Doe', avatar: 'JD', role: 'user', password: 'password', isFirstLogin: false },
-];
+import * as api from './services/api';
 
 const GUEST_USER: User = { id: 'guest', name: 'Guest', avatar: 'G', role: 'guest' };
 
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'coding', name: '编程', type: 'system' },
-  { id: 'writing', name: '写作', type: 'system' },
-  { id: 'image-gen', name: '图像生成', type: 'system' },
-  { id: 'data-analysis', name: '数据分析', type: 'system' },
-  { id: 'learning', name: '学习', type: 'system' },
-  { id: 'other', name: '其他', type: 'system' },
-];
-
-// Demo prompts
-const DEMO_PROMPTS: Prompt[] = [
-  {
-    id: '1',
-    title: 'React Component Generator',
-    content: 'Create a responsive React functional component...',
-    description: 'Standard template for generating UI components.',
-    categoryId: 'coding',
-    tags: ['react', 'typescript', 'tailwind', 'ui'],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    isFavorite: true,
-    userId: 'user1',
-    authorName: 'Admin User',
-    visibility: 'public'
-  },
-  {
-    id: '2',
-    title: 'Blog Post Outline',
-    content: 'Act as a professional content strategist...',
-    description: 'Structuring blog content efficiently.',
-    categoryId: 'writing',
-    tags: ['blog', 'content', 'marketing', 'outline'],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    isFavorite: false,
-    userId: 'user1',
-    authorName: 'Admin User',
-    visibility: 'private'
-  },
-  {
-    id: '3',
-    title: 'Midjourney Portrait (Shared)',
-    content: '/imagine prompt: A cinematic portrait...',
-    description: 'Shared by Jane',
-    categoryId: 'image-gen',
-    tags: ['midjourney', 'portrait', 'cyberpunk', 'art'],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    isFavorite: false,
-    userId: 'user2',
-    authorName: 'Jane Doe',
-    visibility: 'public'
-  }
-];
-
 const App: React.FC = () => {
   // --- STATE ---
-  
-  // Theme State
+
+  // Theme State (client-side preference)
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('promptmaster_theme');
     if (saved) return saved as Theme;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  // Language State
+  // Language State (client-side preference)
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('promptmaster_lang');
     return (saved as Language) || 'zh';
   });
 
-  // Users State (Persist mock users including passwords)
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('promptmaster_users');
-    return saved ? JSON.parse(saved) : MOCK_USERS_INIT;
-  });
+  // Server-side data
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  // Current User (Session) - Persisted to sessionStorage to survive page refresh
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = sessionStorage.getItem('promptmaster_currentUser');
-    if (!saved) return null;
-    try {
-      const parsed = JSON.parse(saved);
-      // Validate the user still exists in the users list (unless guest)
-      if (parsed.role === 'guest') return parsed;
-      const savedUsers = localStorage.getItem('promptmaster_users');
-      const userList = savedUsers ? JSON.parse(savedUsers) : MOCK_USERS_INIT;
-      const found = userList.find((u: User) => u.id === parsed.id);
-      return found || null;
-    } catch {
-      return null;
-    }
-  });
-
-  // Prompts State (field defaults handled by migration system)
-  const [prompts, setPrompts] = useState<Prompt[]>(() => {
-    const saved = localStorage.getItem('promptmaster_data');
-    return saved ? JSON.parse(saved) : DEMO_PROMPTS;
-  });
-
-  // Categories State
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('promptmaster_categories');
-    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
-  });
+  // Loading state
+  const [loading, setLoading] = useState(true);
 
   // UI State
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
@@ -139,21 +49,40 @@ const App: React.FC = () => {
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // --- INITIALIZATION ---
+
+  useEffect(() => {
+    const init = async () => {
+      // Always load categories (public endpoint)
+      try {
+        const cats = await api.fetchCategories();
+        setCategories(cats);
+      } catch {
+        // Fallback empty
+      }
+
+      // Check for existing token
+      if (api.hasToken()) {
+        try {
+          const user = await api.getMe();
+          setCurrentUser(user);
+          const data = await api.fetchPrompts();
+          setPrompts(data);
+        } catch {
+          // Token invalid, clear it
+          api.logout();
+        }
+      }
+      setLoading(false);
+    };
+    init();
+  }, []);
+
   // --- EFFECTS ---
 
-  // Persist Data
-  useEffect(() => localStorage.setItem('promptmaster_data', JSON.stringify(prompts)), [prompts]);
-  useEffect(() => localStorage.setItem('promptmaster_categories', JSON.stringify(categories)), [categories]);
+  // Persist client preferences
   useEffect(() => localStorage.setItem('promptmaster_lang', lang), [lang]);
-  useEffect(() => localStorage.setItem('promptmaster_users', JSON.stringify(users)), [users]);
   useEffect(() => localStorage.setItem('promptmaster_theme', theme), [theme]);
-  useEffect(() => {
-    if (currentUser) {
-      sessionStorage.setItem('promptmaster_currentUser', JSON.stringify(currentUser));
-    } else {
-      sessionStorage.removeItem('promptmaster_currentUser');
-    }
-  }, [currentUser]);
 
   // Apply Theme Class
   useEffect(() => {
@@ -163,6 +92,31 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  // --- HELPERS ---
+
+  const loadPrompts = async () => {
+    try {
+      if (currentUser && currentUser.role !== 'guest') {
+        const data = await api.fetchPrompts();
+        setPrompts(data);
+      } else if (currentUser?.role === 'guest') {
+        const data = await api.fetchPublicPrompts();
+        setPrompts(data);
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const cats = await api.fetchCategories();
+      setCategories(cats);
+    } catch {
+      // silent
+    }
+  };
 
   // --- HANDLERS ---
 
@@ -176,55 +130,111 @@ const App: React.FC = () => {
   };
 
   // Auth Handlers
-  const handleLogin = (username: string, pass: string): boolean => {
-    const trimmed = username.trim();
-    const user = users.find(u => u.name.toLowerCase() === trimmed.toLowerCase() && u.password === pass);
-    if (user) {
+  const handleLogin = async (username: string, pass: string): Promise<boolean> => {
+    try {
+      const { user } = await api.login(username, pass);
       setCurrentUser(user);
       setSelectedCategoryId('all');
+
+      // Load data
+      const [promptsData, catsData] = await Promise.all([
+        api.fetchPrompts(),
+        api.fetchCategories(),
+      ]);
+      setPrompts(promptsData);
+      setCategories(catsData);
+
       addToast(`Welcome back, ${user.name}`, 'success');
       return true;
+    } catch {
+      return false;
     }
-    return false;
   };
 
-  const handleGuestAccess = () => {
+  const handleGuestAccess = async () => {
     setCurrentUser(GUEST_USER);
     setSelectedCategoryId('community');
+    try {
+      const data = await api.fetchPublicPrompts();
+      setPrompts(data);
+    } catch {
+      // silent
+    }
     addToast('Browsing as Guest', 'info');
   };
 
   const handleLogout = () => {
+    api.logout();
     setCurrentUser(null);
+    setPrompts([]);
+    setUsers([]);
     setSelectedCategoryId('all');
   };
 
-  const handleChangePassword = (newPass: string) => {
-    if (!currentUser) return;
-    
-    const updatedUser = { ...currentUser, password: newPass, isFirstLogin: false };
-    const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
-    
-    setUsers(updatedUsers);
-    setCurrentUser(updatedUser);
-    addToast(t(lang, 'passwordChanged'), 'success');
-  };
-
-  // Prompt Handlers
-  const handleSavePrompt = (prompt: Prompt) => {
-    if (!currentUser || currentUser.role === 'guest') return;
-
-    if (editingPrompt) {
-      setPrompts(prev => prev.map(p => p.id === prompt.id ? prompt : p));
-    } else {
-      setPrompts(prev => [prompt, ...prev]);
+  const handleChangePassword = async (newPass: string): Promise<boolean> => {
+    try {
+      const { user } = await api.changePassword(newPass);
+      setCurrentUser(user);
+      addToast(t(lang, 'passwordChanged'), 'success');
+      return true;
+    } catch {
+      addToast('Failed to change password', 'error');
+      return false;
     }
   };
 
-  const handleDeletePrompt = (id: string) => {
+  // Prompt Handlers
+  const handleSavePrompt = async (promptData: {
+    id?: string;
+    title: string;
+    content: string;
+    description?: string;
+    categoryId: string;
+    tags: string[];
+    visibility: string;
+  }): Promise<boolean> => {
+    if (!currentUser || currentUser.role === 'guest') return false;
+
+    try {
+      if (editingPrompt && promptData.id) {
+        // Update
+        const updated = await api.updatePrompt(promptData.id, {
+          title: promptData.title,
+          content: promptData.content,
+          description: promptData.description,
+          categoryId: promptData.categoryId,
+          tags: promptData.tags,
+          visibility: promptData.visibility,
+        });
+        setPrompts(prev => prev.map(p => p.id === updated.id ? updated : p));
+      } else {
+        // Create
+        const created = await api.createPrompt({
+          title: promptData.title,
+          content: promptData.content,
+          description: promptData.description,
+          categoryId: promptData.categoryId,
+          tags: promptData.tags,
+          visibility: promptData.visibility,
+        });
+        setPrompts(prev => [created, ...prev]);
+      }
+      return true;
+    } catch (err: any) {
+      addToast(err.message || 'Failed to save prompt', 'error');
+      return false;
+    }
+  };
+
+  const handleDeletePrompt = async (id: string) => {
     if (!currentUser || currentUser.role === 'guest') return;
-    setPrompts(prev => prev.filter(p => p.id !== id));
-    addToast(t(lang, 'promptDeleted'), 'info');
+    try {
+      await api.deletePrompt(id);
+      setPrompts(prev => prev.filter(p => p.id !== id));
+      addToast(t(lang, 'promptDeleted'), 'info');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to delete prompt', 'error');
+    }
   };
 
   const handleCopyPrompt = (content: string) => {
@@ -232,125 +242,121 @@ const App: React.FC = () => {
     addToast(t(lang, 'clipboardCopied'), 'success');
   };
 
-  const handleToggleFavorite = (id: string) => {
+  const handleToggleFavorite = async (id: string) => {
     if (!currentUser || currentUser.role === 'guest') return;
-    setPrompts(prev => prev.map(p => 
-      p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
-    ));
-  };
-
-  const handleAddCategory = (name: string, icon?: string) => {
-    if (!currentUser || currentUser.role === 'guest') return;
-    if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-        addToast(t(lang, 'categoryExists'), 'error');
-        return;
+    try {
+      const { isFavorite } = await api.toggleFavorite(id);
+      setPrompts(prev => prev.map(p =>
+        p.id === id ? { ...p, isFavorite } : p
+      ));
+    } catch {
+      // silent
     }
-    const newCategory: Category = {
-        id: generateId(),
-        name,
-        type: 'user',
-        icon: icon || 'Tag',
-        userId: currentUser.id
-    };
-    setCategories(prev => [...prev, newCategory]);
-    addToast(t(lang, 'categoryCreated'), 'success');
   };
 
-  const handleDeleteCategory = (id: string) => {
+  const handleAddCategory = async (name: string, icon?: string) => {
+    if (!currentUser || currentUser.role === 'guest') return;
+    try {
+      const newCat = await api.createCategory(name, icon);
+      setCategories(prev => [...prev, newCat]);
+      addToast(t(lang, 'categoryCreated'), 'success');
+    } catch (err: any) {
+      addToast(err.message || t(lang, 'categoryExists'), 'error');
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
     if (!currentUser || currentUser.role !== 'admin') return;
-    setPrompts(prev => prev.map(p => {
-        if (p.categoryId === id) {
-            return { ...p, categoryId: 'other' };
-        }
-        return p;
-    }));
-
-    setCategories(prev => prev.filter(c => c.id !== id));
-    if (selectedCategoryId === id) {
+    try {
+      await api.deleteCategory(id);
+      setCategories(prev => prev.filter(c => c.id !== id));
+      // Reload prompts since some may have been reassigned
+      await loadPrompts();
+      if (selectedCategoryId === id) {
         setSelectedCategoryId('all');
+      }
+      addToast(t(lang, 'categoryDeleted'), 'info');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to delete category', 'error');
     }
-    addToast(t(lang, 'categoryDeleted'), 'info');
   };
 
   const handleTagClick = (tag: string) => {
-      if (searchQuery === tag) {
-          setSearchQuery('');
-      } else {
-          setSearchQuery(tag);
-      }
-  };
-
-  const handleSwitchUser = (userId: string) => {
-      if (!currentUser || currentUser.role !== 'admin') return;
-      const user = users.find(u => u.id === userId);
-      if (user) {
-          setCurrentUser(user);
-          setSelectedCategoryId('all');
-          addToast(t(lang, 'switchUser') + `: ${user.name}`, 'info');
-      }
+    if (searchQuery === tag) {
+      setSearchQuery('');
+    } else {
+      setSearchQuery(tag);
+    }
   };
 
   // User Management Handlers
-  const handleAddUser = (name: string, role: UserRole) => {
+  const handleAddUser = async (name: string, role: UserRole) => {
     if (!currentUser || currentUser.role !== 'admin') return;
-    
-    const avatar = name.substring(0, 2).toUpperCase();
-    const newUser: User = {
-        id: generateId(),
-        name,
-        role,
-        avatar,
-        password: '123456', // Default password per requirement
-        isFirstLogin: true
-    };
-    setUsers(prev => [...prev, newUser]);
-    addToast(t(lang, 'userAdded'), 'success');
+    try {
+      const newUser = await api.createUser(name, role);
+      setUsers(prev => [...prev, newUser]);
+      addToast(t(lang, 'userAdded'), 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to add user', 'error');
+    }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (!currentUser || currentUser.role !== 'admin') return;
     if (id === currentUser.id) {
-        addToast(t(lang, 'cannotDeleteSelf'), 'error');
-        return;
+      addToast(t(lang, 'cannotDeleteSelf'), 'error');
+      return;
     }
-    
-    // Reassign prompts to current admin
-    setPrompts(prev => prev.map(p => p.userId === id ? { ...p, userId: currentUser.id } : p));
-    setUsers(prev => prev.filter(u => u.id !== id));
-    addToast(t(lang, 'userDeleted'), 'info');
+    try {
+      await api.deleteUser(id);
+      setUsers(prev => prev.filter(u => u.id !== id));
+      // Reload prompts since they may have been reassigned
+      await loadPrompts();
+      addToast(t(lang, 'userDeleted'), 'info');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to delete user', 'error');
+    }
+  };
+
+  const handleOpenUserManagement = async () => {
+    // Load users when opening user management
+    try {
+      const data = await api.fetchUsers();
+      setUsers(data);
+    } catch {
+      // silent
+    }
+    setIsUserMgmtOpen(true);
   };
 
   // --- DERIVED STATE ---
 
   const popularTags = useMemo(() => {
-    // If not logged in (shouldn't happen due to Login wrapper), safe fallback
     const currentUserId = currentUser?.id || '';
     const isGuest = currentUser?.role === 'guest';
 
     const tagCounts: Record<string, number> = {};
     prompts.forEach(p => {
-        // Visibility Check
-        let isVisible = false;
-        if (isGuest) {
-            isVisible = p.visibility === 'public';
-        } else {
-            // User sees their own + public
-            isVisible = p.userId === currentUserId || p.visibility === 'public';
-        }
+      let isVisible = false;
+      if (isGuest) {
+        isVisible = p.visibility === 'public';
+      } else {
+        isVisible = p.userId === currentUserId || p.visibility === 'public';
+      }
 
-        if (isVisible) {
-            p.tags.forEach(t => {
-                const normalized = t.trim().toLowerCase();
-                if(normalized) {
-                    tagCounts[normalized] = (tagCounts[normalized] || 0) + 1;
-                }
-            });
-        }
+      if (isVisible) {
+        p.tags.forEach(t => {
+          const normalized = t.trim().toLowerCase();
+          if (normalized) {
+            tagCounts[normalized] = (tagCounts[normalized] || 0) + 1;
+          }
+        });
+      }
     });
     return Object.entries(tagCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([tag]) => tag);
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag]) => tag);
   }, [prompts, currentUser]);
 
   const filteredPrompts = useMemo(() => {
@@ -359,18 +365,15 @@ const App: React.FC = () => {
     return prompts.filter(prompt => {
       // 1. Permission / Scope Filter
       let isInScope = false;
-      
+
       if (currentUser.role === 'guest') {
-          // Guest only sees public
-          isInScope = prompt.visibility === 'public';
+        isInScope = prompt.visibility === 'public';
       } else {
-          // Logged in user
-          if (selectedCategoryId === 'community') {
-              isInScope = prompt.visibility === 'public';
-          } else {
-              // Default view: My Prompts
-              isInScope = prompt.userId === currentUser.id;
-          }
+        if (selectedCategoryId === 'community') {
+          isInScope = prompt.visibility === 'public';
+        } else {
+          isInScope = prompt.userId === currentUser.id;
+        }
       }
 
       if (!isInScope) return false;
@@ -410,6 +413,15 @@ const App: React.FC = () => {
 
   // --- RENDER ---
 
+  // 0. Loading
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400 dark:text-slate-500 animate-pulse text-lg font-medium">Loading...</div>
+      </div>
+    );
+  }
+
   // 1. Login Screen
   if (!currentUser) {
     return (
@@ -422,20 +434,20 @@ const App: React.FC = () => {
 
   // 2. Force Password Change
   if (currentUser.isFirstLogin && currentUser.role !== 'guest') {
-      return (
-        <>
-            <ChangePassword onChange={handleChangePassword} lang={lang} />
-            <ToastContainer toasts={toasts} removeToast={removeToast} />
-        </>
-      );
+    return (
+      <>
+        <ChangePassword onChange={handleChangePassword} lang={lang} />
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+      </>
+    );
   }
 
   // 3. Main App
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-200 overflow-hidden font-sans transition-colors duration-300">
-      <Sidebar 
+      <Sidebar
         categories={categories}
-        selectedCategoryId={selectedCategoryId} 
+        selectedCategoryId={selectedCategoryId}
         onSelectCategory={setSelectedCategoryId}
         onAddCategory={handleAddCategory}
         onDeleteCategory={handleDeleteCategory}
@@ -444,17 +456,15 @@ const App: React.FC = () => {
         lang={lang}
         setLang={setLang}
         currentUser={currentUser}
-        users={users}
-        onSwitchUser={handleSwitchUser}
         theme={theme}
         setTheme={setTheme}
-        onOpenUserManagement={() => setIsUserMgmtOpen(true)}
+        onOpenUserManagement={handleOpenUserManagement}
         onLogout={handleLogout}
       />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        
+
         {/* Top Navigation / Search Bar */}
         <header className="h-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-8 z-20 shrink-0 sticky top-0">
           <div className="flex items-center gap-3 flex-1">
@@ -518,7 +528,7 @@ const App: React.FC = () => {
              )}
           </div>
         </header>
-        
+
          {/* Mobile Search Bar (Below Header) */}
         <div className="sm:hidden px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 space-y-3">
            <div className="relative w-full">
@@ -573,8 +583,8 @@ const App: React.FC = () => {
                             key={tag}
                             onClick={() => handleTagClick(tag)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200
-                                ${searchQuery === tag 
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/30' 
+                                ${searchQuery === tag
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/30'
                                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400'
                                 }
                             `}
@@ -587,7 +597,7 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <PromptList 
+            <PromptList
               prompts={filteredPrompts}
               categories={categories}
               onEdit={(p) => {
@@ -615,7 +625,7 @@ const App: React.FC = () => {
         currentUser={currentUser}
       />
 
-      <UserManagement 
+      <UserManagement
         isOpen={isUserMgmtOpen}
         onClose={() => setIsUserMgmtOpen(false)}
         users={users}

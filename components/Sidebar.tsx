@@ -50,8 +50,6 @@ interface SidebarProps {
   lang: Language;
   setLang: (lang: Language) => void;
   currentUser: User;
-  users: User[];
-  onSwitchUser: (userId: string) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
   onOpenUserManagement: () => void;
@@ -69,8 +67,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   lang,
   setLang,
   currentUser,
-  users,
-  onSwitchUser,
   theme,
   setTheme,
   onOpenUserManagement,
@@ -317,7 +313,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Bottom Section */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 mt-auto shrink-0 bg-white dark:bg-slate-950 space-y-3">
 
-             {/* User Switcher */}
+             {/* User Menu */}
              <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -342,7 +338,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="absolute bottom-full left-0 w-full mb-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in-up">
                         {/* Admin Action */}
                         {!isGuest && currentUser.role === 'admin' && (
-                            <>
                             <button
                                 onClick={() => {
                                     onOpenUserManagement();
@@ -353,37 +348,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <Icons.Shield size={16} />
                                 {t(lang, 'manageUsers')}
                             </button>
-                            </>
-                        )}
-
-                        {currentUser.role === 'admin' && (
-                             <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-950/50">
-                                {t(lang, 'switchUser')}
-                            </div>
-                        )}
-                        {currentUser.role === 'admin' && (
-                            <div className="max-h-48 overflow-y-auto border-b border-slate-100 dark:border-slate-800">
-                                {users.filter(u => u.role !== 'guest').map(user => (
-                                    <button
-                                        key={user.id}
-                                        onClick={() => {
-                                            onSwitchUser(user.id);
-                                            setShowUserMenu(false);
-                                        }}
-                                        className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors
-                                            ${currentUser.id === user.id ? 'bg-slate-50 dark:bg-slate-800' : ''}
-                                        `}
-                                    >
-                                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-600 dark:text-slate-300 font-bold">
-                                            {user.avatar}
-                                        </div>
-                                        <span className={`text-sm ${currentUser.id === user.id ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-700 dark:text-slate-300'}`}>
-                                            {user.name}
-                                        </span>
-                                        {currentUser.id === user.id && <Icons.Check size={14} className="ml-auto text-indigo-600 dark:text-indigo-400"/>}
-                                    </button>
-                                ))}
-                            </div>
                         )}
 
                         <button

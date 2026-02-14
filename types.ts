@@ -7,7 +7,6 @@ export interface User {
   name: string;
   avatar: string; // Initials or simple string
   role: UserRole;
-  password?: string; // Simulated password for frontend-only auth
   isFirstLogin?: boolean;
 }
 

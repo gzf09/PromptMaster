@@ -4,7 +4,7 @@ import { t } from '../utils/translations';
 import { Language } from '../types';
 
 interface ChangePasswordProps {
-  onChange: (newPassword: string) => void;
+  onChange: (newPassword: string) => Promise<boolean>;
   lang: Language;
 }
 
@@ -12,14 +12,20 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onChange, lang }
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       setError(t(lang, 'passwordMismatch'));
       return;
     }
-    onChange(newPassword);
+    setLoading(true);
+    try {
+      await onChange(newPassword);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,7 +46,8 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onChange, lang }
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+              disabled={loading}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               required
               minLength={4}
             />
@@ -54,7 +61,8 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onChange, lang }
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+              disabled={loading}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               required
               minLength={4}
             />
@@ -68,9 +76,10 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onChange, lang }
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
           >
-            {t(lang, 'saveBtn')}
+            {loading ? '...' : t(lang, 'saveBtn')}
           </button>
         </form>
       </div>

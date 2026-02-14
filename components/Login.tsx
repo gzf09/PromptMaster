@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Icons } from './Icon';
 import { t } from '../utils/translations';
-import { Language, User } from '../types';
+import { Language } from '../types';
 
 interface LoginProps {
-  onLogin: (username: string, password: string) => boolean;
+  onLogin: (username: string, password: string) => Promise<boolean>;
   onGuestAccess: () => void;
   lang: Language;
 }
@@ -13,13 +13,19 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const success = onLogin(username, password);
-    if (!success) {
-      setError(t(lang, 'loginFailed'));
+    setLoading(true);
+    try {
+      const success = await onLogin(username, password);
+      if (!success) {
+        setError(t(lang, 'loginFailed'));
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,7 +52,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
               autoCorrect="off"
               autoComplete="username"
               spellCheck={false}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              disabled={loading}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
               required
             />
           </div>
@@ -59,7 +66,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              disabled={loading}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
               required
             />
           </div>
@@ -72,9 +80,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all transform hover:scale-[1.02]"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
           >
-            {t(lang, 'loginBtn')}
+            {loading ? '...' : t(lang, 'loginBtn')}
           </button>
         </form>
 
@@ -90,7 +99,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
 
           <button
             onClick={onGuestAccess}
-            className="mt-6 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+            disabled={loading}
+            className="mt-6 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Icons.Globe size={18} />
             {t(lang, 'guestAccessBtn')}
