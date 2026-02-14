@@ -42,6 +42,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              autoCapitalize="off"
+              autoCorrect="off"
+              autoComplete="username"
+              spellCheck={false}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               required
             />
@@ -54,6 +58,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               required
             />

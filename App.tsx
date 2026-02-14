@@ -177,7 +177,8 @@ const App: React.FC = () => {
 
   // Auth Handlers
   const handleLogin = (username: string, pass: string): boolean => {
-    const user = users.find(u => u.name === username && u.password === pass);
+    const trimmed = username.trim();
+    const user = users.find(u => u.name.toLowerCase() === trimmed.toLowerCase() && u.password === pass);
     if (user) {
       setCurrentUser(user);
       setSelectedCategoryId('all');
