@@ -1,0 +1,5 @@
+{
+  "name": "PromptMaster",
+  "description": "A personal AI prompt manager to organize, edit, and optimize your LLM prompts using Gemini.",
+  "requestFramePermissions": []
+}
