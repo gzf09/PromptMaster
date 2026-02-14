@@ -100,8 +100,22 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : MOCK_USERS_INIT;
   });
 
-  // Current User (Session) - No persistence for session security simulation, starts null
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Current User (Session) - Persisted to sessionStorage to survive page refresh
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = sessionStorage.getItem('promptmaster_currentUser');
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      // Validate the user still exists in the users list (unless guest)
+      if (parsed.role === 'guest') return parsed;
+      const savedUsers = localStorage.getItem('promptmaster_users');
+      const userList = savedUsers ? JSON.parse(savedUsers) : MOCK_USERS_INIT;
+      const found = userList.find((u: User) => u.id === parsed.id);
+      return found || null;
+    } catch {
+      return null;
+    }
+  });
 
   // Prompts State (field defaults handled by migration system)
   const [prompts, setPrompts] = useState<Prompt[]>(() => {
@@ -133,6 +147,13 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('promptmaster_lang', lang), [lang]);
   useEffect(() => localStorage.setItem('promptmaster_users', JSON.stringify(users)), [users]);
   useEffect(() => localStorage.setItem('promptmaster_theme', theme), [theme]);
+  useEffect(() => {
+    if (currentUser) {
+      sessionStorage.setItem('promptmaster_currentUser', JSON.stringify(currentUser));
+    } else {
+      sessionStorage.removeItem('promptmaster_currentUser');
+    }
+  }, [currentUser]);
 
   // Apply Theme Class
   useEffect(() => {
