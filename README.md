@@ -64,6 +64,7 @@ graph TB
 - 访客仅可浏览社区公开 Prompt
 - 支持开放注册（管理员可控制开关）
 - 新用户首次登录强制修改密码
+- 用户可随时通过侧边栏菜单修改密码
 - JWT 认证，跨设备数据同步
 - 所有 Prompt 卡片始终显示创建者
 
@@ -115,6 +116,7 @@ graph TB
 - **复制**：点击卡片上的复制按钮，或打开详情后点击内容区域右上角的复制图标
 - **社区**：将 Prompt 设为「公开」后，所有用户都能在「社区」视图看到并复制使用
 - **Fork**：看到他人的公开 Prompt 想修改？点击 Fork 图标，自动创建一份副本到自己名下
+- **修改密码**：侧边栏底部用户菜单中选择「修改密码」
 
 ### 小技巧
 
@@ -149,7 +151,7 @@ promptmaster/
 │   ├── PromptList.tsx       # Prompt 卡片网格 + 详情弹窗（含 Fork）
 │   ├── PromptEditor.tsx     # Prompt 创建/编辑/Fork 弹窗
 │   ├── Login.tsx            # 登录 / 注册页
-│   ├── ChangePassword.tsx   # 首次登录修改密码
+│   ├── ChangePassword.tsx   # 修改密码（首次登录强制 / 用户主动）
 │   ├── UserManagement.tsx   # 用户管理弹窗（管理员）
 │   ├── Toast.tsx            # 通知提示组件
 │   └── Icon.tsx             # lucide-react 图标导出
