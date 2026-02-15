@@ -53,6 +53,7 @@ interface SidebarProps {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   onOpenUserManagement: () => void;
+  onChangePassword: () => void;
   onLogout: () => void;
 }
 
@@ -70,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   theme,
   setTheme,
   onOpenUserManagement,
+  onChangePassword,
   onLogout
 }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -347,6 +349,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             >
                                 <Icons.Shield size={16} />
                                 {t(lang, 'manageUsers')}
+                            </button>
+                        )}
+
+                        {/* Change Password */}
+                        {!isGuest && (
+                            <button
+                                onClick={() => {
+                                    onChangePassword();
+                                    setShowUserMenu(false);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-sm transition-colors border-b border-slate-100 dark:border-slate-800"
+                            >
+                                <Icons.Key size={16} />
+                                {t(lang, 'changePassword')}
                             </button>
                         )}
 

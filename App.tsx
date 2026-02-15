@@ -46,6 +46,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isUserMgmtOpen, setIsUserMgmtOpen] = useState(false);
+  const [isChangePassOpen, setIsChangePassOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [forkSource, setForkSource] = useState<Prompt | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -512,6 +513,7 @@ const App: React.FC = () => {
         theme={theme}
         setTheme={setTheme}
         onOpenUserManagement={handleOpenUserManagement}
+        onChangePassword={() => setIsChangePassOpen(true)}
         onLogout={handleLogout}
       />
 
@@ -692,6 +694,14 @@ const App: React.FC = () => {
         currentUser={currentUser}
         lang={lang}
       />
+
+      {isChangePassOpen && (
+        <ChangePassword
+          onChange={handleChangePassword}
+          onClose={() => setIsChangePassOpen(false)}
+          lang={lang}
+        />
+      )}
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>

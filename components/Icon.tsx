@@ -29,7 +29,8 @@ import {
   Shield,
   ShieldAlert,
   LogOut,
-  GitFork
+  GitFork,
+  KeyRound
 } from 'lucide-react';
 
 export const Icons = {
@@ -62,5 +63,6 @@ export const Icons = {
   Shield,
   ShieldAlert,
   LogOut,
-  GitFork
+  GitFork,
+  Key: KeyRound
 };

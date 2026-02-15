@@ -105,7 +105,9 @@ export const translations = {
     orText: '或',
     usernameExists: '用户名已存在',
     forkPrompt: '基于此创建',
-    forkPromptTitle: '基于此创建提示词'
+    forkPromptTitle: '基于此创建提示词',
+    changePassword: '修改密码',
+    changePasswordVoluntaryDesc: '设置新密码以保护账户安全'
   },
   en: {
     appTitle: 'PromptMaster',
@@ -211,7 +213,9 @@ export const translations = {
     orText: 'or',
     usernameExists: 'Username already exists',
     forkPrompt: 'Fork',
-    forkPromptTitle: 'Fork Prompt'
+    forkPromptTitle: 'Fork Prompt',
+    changePassword: 'Change Password',
+    changePasswordVoluntaryDesc: 'Set a new password to keep your account secure'
   }
 };
 
