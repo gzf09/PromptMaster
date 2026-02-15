@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Prompt, Category, Language, Visibility, User } from '../types';
 import { Icons } from './Icon';
 import { t } from '../utils/translations';
@@ -16,6 +16,7 @@ interface PromptEditorProps {
     visibility: string;
   }) => Promise<boolean>;
   initialData?: Prompt | null;
+  forkSource?: Prompt | null;
   categories: Category[];
   addToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   lang: Language;
@@ -27,6 +28,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   onClose,
   onSave,
   initialData,
+  forkSource,
   categories,
   addToast,
   lang,
@@ -40,6 +42,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('private');
   const [saving, setSaving] = useState(false);
+  const composingRef = useRef(false);
 
   useEffect(() => {
     if (initialData) {
@@ -49,10 +52,18 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
       setCategoryId(initialData.categoryId);
       setTags(initialData.tags || []);
       setVisibility(initialData.visibility || 'private');
+    } else if (forkSource) {
+      setTitle(forkSource.title + ' (Fork)');
+      setContent(forkSource.content);
+      setDescription(forkSource.description || '');
+      setCategoryId(forkSource.categoryId);
+      setTags(forkSource.tags || []);
+      setVisibility('private');
+      setTagInput('');
     } else {
       resetForm();
     }
-  }, [initialData, isOpen, categories]);
+  }, [initialData, forkSource, isOpen, categories]);
 
   const resetForm = () => {
     setTitle('');
@@ -77,6 +88,20 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
         return;
     }
 
+    // Auto-add any pending tag input before saving
+    let finalTags = tags;
+    if (tagInput.trim()) {
+      const pending = tagInput
+        .split(/[,，、;；]/)
+        .map(t => t.trim())
+        .filter(t => t && !tags.includes(t));
+      if (pending.length > 0) {
+        finalTags = [...tags, ...pending];
+        setTags(finalTags);
+      }
+      setTagInput('');
+    }
+
     setSaving(true);
     try {
       const success = await onSave({
@@ -85,7 +110,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
         content,
         description,
         categoryId,
-        tags,
+        tags: finalTags,
         visibility,
       });
 
@@ -101,7 +126,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
 
   const addTags = (input: string) => {
     const newTags = input
-      .split(',')
+      .split(/[,，、;；]/)
       .map(t => t.trim())
       .filter(t => t && !tags.includes(t));
     if (newTags.length > 0) {
@@ -111,6 +136,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
   };
 
   const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing || composingRef.current) return;
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
       addTags(tagInput);
@@ -119,7 +145,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
 
   const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (value.includes(',')) {
+    if (/[,，、;；]/.test(value)) {
       addTags(value);
     } else {
       setTagInput(value);
@@ -142,7 +168,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
             <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
                 {initialData ? <Icons.Edit size={24} className="text-indigo-600 dark:text-indigo-400"/> : <Icons.Plus size={24} className="text-indigo-600 dark:text-indigo-400"/>}
             </div>
-            {initialData ? t(lang, 'editPrompt') : t(lang, 'createPrompt')}
+            {initialData ? t(lang, 'editPrompt') : forkSource ? t(lang, 'forkPromptTitle') : t(lang, 'createPrompt')}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
             <Icons.Close size={24} />
@@ -242,6 +268,8 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
                   value={tagInput}
                   onChange={handleTagInputChange}
                   onKeyDown={handleAddTag}
+                  onCompositionStart={() => { composingRef.current = true; }}
+                  onCompositionEnd={() => { setTimeout(() => { composingRef.current = false; }, 50); }}
                   placeholder={t(lang, 'tagInputPlaceholder')}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none placeholder-slate-400 dark:placeholder-slate-600 shadow-sm"
                 />

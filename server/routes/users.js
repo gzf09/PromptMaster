@@ -20,13 +20,15 @@ function generateId() {
 
 // GET /api/users
 router.get('/', adminRequired, (req, res) => {
-  const rows = db.prepare('SELECT id, name, avatar, role, is_first_login FROM users').all();
+  const rows = db.prepare('SELECT id, name, avatar, role, is_first_login, created_at, last_login_at FROM users').all();
   res.json(rows.map(r => ({
     id: r.id,
     name: r.name,
     avatar: r.avatar,
     role: r.role,
     isFirstLogin: !!r.is_first_login,
+    createdAt: r.created_at || 0,
+    lastLoginAt: r.last_login_at || 0,
   })));
 });
 
@@ -45,12 +47,13 @@ router.post('/', adminRequired, (req, res) => {
 
   const id = generateId();
   const avatar = name.trim().substring(0, 2).toUpperCase();
-  const hash = bcrypt.hashSync('123456', 10);
+  const hash = bcrypt.hashSync('123456', 8);
   const userRole = role || 'user';
+  const now = Date.now();
 
   db.prepare(
-    'INSERT INTO users (id, name, avatar, role, password_hash, is_first_login) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(id, name.trim(), avatar, userRole, hash, 1);
+    'INSERT INTO users (id, name, avatar, role, password_hash, is_first_login, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, name.trim(), avatar, userRole, hash, 1, now, 0);
 
   res.status(201).json({
     id,

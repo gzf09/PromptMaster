@@ -8,6 +8,8 @@ export interface User {
   avatar: string; // Initials or simple string
   role: UserRole;
   isFirstLogin?: boolean;
+  createdAt?: number;
+  lastLoginAt?: number;
 }
 
 export interface Category {

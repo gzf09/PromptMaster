@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Language, UserRole } from '../types';
 import { Icons } from './Icon';
 import { t } from '../utils/translations';
+import * as api from '../services/api';
 
 interface UserManagementProps {
   isOpen: boolean;
@@ -24,6 +25,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 }) => {
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('user');
+  const [allowRegistration, setAllowRegistration] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.fetchSettings().then(s => setAllowRegistration(s.allowRegistration)).catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -36,10 +45,33 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
+  const handleToggleRegistration = async () => {
+    setSettingsLoading(true);
+    try {
+      const result = await api.updateSettings({ allowRegistration: !allowRegistration });
+      setAllowRegistration(result.allowRegistration);
+    } catch {
+      // silent
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const formatTime = (ts?: number) => {
+    if (!ts || ts === 0) return t(lang, 'neverLoggedIn');
+    return new Date(ts).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-colors duration-200">
-        
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-colors duration-200">
+
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -52,10 +84,31 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
-          
+        <div className="p-6 overflow-y-auto max-h-[70vh]">
+
+          {/* Registration Toggle */}
+          <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t(lang, 'allowRegistration')}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {allowRegistration ? t(lang, 'registerTitle') : t(lang, 'registrationClosed')}
+              </p>
+            </div>
+            <button
+              onClick={handleToggleRegistration}
+              disabled={settingsLoading}
+              className={`relative w-12 h-7 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+                allowRegistration ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
+                allowRegistration ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
           {/* Add User Form */}
-          <form onSubmit={handleSubmit} className="mb-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+          <form onSubmit={handleSubmit} className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t(lang, 'addUser')}</h3>
             <div className="flex gap-3">
               <input
@@ -73,7 +126,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 <option value="user">{t(lang, 'user')}</option>
                 <option value="admin">{t(lang, 'admin')}</option>
               </select>
-              <button 
+              <button
                 type="submit"
                 disabled={!newName.trim()}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -84,36 +137,60 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             <p className="text-xs text-slate-500 mt-2">{t(lang, 'defaultPasswordNotice')}</p>
           </form>
 
-          {/* User List */}
-          <div className="space-y-3">
-            {users.map(user => (
-              <div key={user.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900/50 bg-white dark:bg-slate-900/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm
-                    ${user.role === 'admin' ? 'bg-indigo-600' : 'bg-slate-500'}
-                  `}>
-                    {user.avatar}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                        {user.name}
-                        {currentUser.id === user.id && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">{t(lang, 'currentUser')}</span>}
-                    </p>
-                    <p className="text-xs text-slate-500 capitalize">{t(lang, user.role)}</p>
-                  </div>
-                </div>
-
-                {user.id !== currentUser.id && user.role !== 'guest' && (
-                  <button 
-                    onClick={() => onDeleteUser(user.id)}
-                    className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    title={t(lang, 'deleteUser')}
-                  >
-                    <Icons.Trash size={16} />
-                  </button>
-                )}
-              </div>
-            ))}
+          {/* User Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t(lang, 'nameLabel')}</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t(lang, 'roleLabel')}</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t(lang, 'createdAt')}</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t(lang, 'lastLoginAt')}</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(user => (
+                  <tr key={user.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0
+                          ${user.role === 'admin' ? 'bg-indigo-600' : 'bg-slate-500'}
+                        `}>
+                          {user.avatar}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-2">
+                            {user.name}
+                            {currentUser.id === user.id && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">{t(lang, 'currentUser')}</span>}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="text-xs text-slate-600 dark:text-slate-400 capitalize">{t(lang, user.role)}</span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{formatTime(user.createdAt)}</span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{formatTime(user.lastLoginAt)}</span>
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      {user.id !== currentUser.id && user.role !== 'guest' && (
+                        <button
+                          onClick={() => onDeleteUser(user.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title={t(lang, 'deleteUser')}
+                        >
+                          <Icons.Trash size={15} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
         </div>

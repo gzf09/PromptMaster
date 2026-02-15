@@ -28,7 +28,8 @@ import {
   Moon,
   Shield,
   ShieldAlert,
-  LogOut
+  LogOut,
+  GitFork
 } from 'lucide-react';
 
 export const Icons = {
@@ -60,5 +61,6 @@ export const Icons = {
   Moon,
   Shield,
   ShieldAlert,
-  LogOut
+  LogOut,
+  GitFork
 };

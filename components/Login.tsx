@@ -1,21 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from './Icon';
 import { t } from '../utils/translations';
 import { Language } from '../types';
+import * as api from '../services/api';
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<boolean>;
+  onRegister: (username: string, password: string) => Promise<boolean>;
   onGuestAccess: () => void;
   lang: Language;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) => {
+export const Login: React.FC<LoginProps> = ({ onLogin, onRegister, onGuestAccess, lang }) => {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [allowRegistration, setAllowRegistration] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    api.fetchSettings().then(s => setAllowRegistration(s.allowRegistration)).catch(() => {});
+  }, []);
+
+  const resetForm = () => {
+    setUsername('');
+    setPassword('');
+    setConfirmPassword('');
+    setError('');
+  };
+
+  const switchMode = (m: 'login' | 'register') => {
+    resetForm();
+    setMode(m);
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -23,6 +44,34 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
       const success = await onLogin(username, password);
       if (!success) {
         setError(t(lang, 'loginFailed'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (username.trim().length < 3) {
+      setError(t(lang, 'usernameMinLength'));
+      return;
+    }
+    if (password.length < 4) {
+      setError(t(lang, 'passwordMinLength'));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t(lang, 'passwordMismatch'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const success = await onRegister(username, password);
+      if (!success) {
+        setError(t(lang, 'usernameExists'));
       }
     } finally {
       setLoading(false);
@@ -39,53 +88,143 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t(lang, 'appTitle')}</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              {t(lang, 'usernameLabel')}
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoCapitalize="off"
-              autoCorrect="off"
-              autoComplete="username"
-              spellCheck={false}
-              disabled={loading}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
-              required
-            />
+        {/* Tab Switch */}
+        {allowRegistration && (
+          <div className="flex mb-6 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+            <button
+              onClick={() => switchMode('login')}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                mode === 'login'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              {t(lang, 'loginBtn')}
+            </button>
+            <button
+              onClick={() => switchMode('register')}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                mode === 'register'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              {t(lang, 'registerBtn')}
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              {t(lang, 'passwordLabel')}
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              disabled={loading}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
-              required
-            />
-          </div>
+        )}
 
-          {error && (
-            <div className="text-red-500 text-sm font-medium text-center bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
-              {error}
+        {mode === 'login' ? (
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t(lang, 'usernameLabel')}
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoCapitalize="off"
+                autoCorrect="off"
+                autoComplete="username"
+                spellCheck={false}
+                disabled={loading}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                required
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t(lang, 'passwordLabel')}
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                disabled={loading}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                required
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
-          >
-            {loading ? '...' : t(lang, 'loginBtn')}
-          </button>
-        </form>
+            {error && (
+              <div className="text-red-500 text-sm font-medium text-center bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+            >
+              {loading ? '...' : t(lang, 'loginBtn')}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t(lang, 'usernameLabel')}
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoCapitalize="off"
+                autoCorrect="off"
+                autoComplete="username"
+                spellCheck={false}
+                disabled={loading}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t(lang, 'passwordLabel')}
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                disabled={loading}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t(lang, 'confirmPasswordLabel')}
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                disabled={loading}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-500 text-sm font-medium text-center bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+            >
+              {loading ? '...' : t(lang, 'registerBtn')}
+            </button>
+          </form>
+        )}
 
         <div className="mt-6">
           <div className="relative">
@@ -93,7 +232,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onGuestAccess, lang }) =>
               <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-slate-900 text-slate-500">or</span>
+              <span className="px-2 bg-white dark:bg-slate-900 text-slate-500">{t(lang, 'orText')}</span>
             </div>
           </div>
 

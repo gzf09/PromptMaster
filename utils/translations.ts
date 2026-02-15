@@ -89,10 +89,23 @@ export const translations = {
     defaultPasswordNotice: '默认密码: 123456',
     createdAt: '创建时间',
     updatedAt: '更新时间',
-    tagInputPlaceholder: '输入标签，按回车或逗号分隔',
+    tagInputPlaceholder: '输入标签，按回车或用逗号、顿号、分号分隔',
     allCategories: '全部分类',
     selectIcon: '选择图标',
-    addCategory: '添加分类'
+    addCategory: '添加分类',
+    registerBtn: '注册',
+    registerTitle: '创建账号',
+    registerSuccess: '注册成功',
+    allowRegistration: '开放注册',
+    registrationClosed: '注册未开放',
+    lastLoginAt: '最近登录',
+    neverLoggedIn: '从未登录',
+    usernameMinLength: '用户名至少3个字符',
+    passwordMinLength: '密码至少4个字符',
+    orText: '或',
+    usernameExists: '用户名已存在',
+    forkPrompt: '基于此创建',
+    forkPromptTitle: '基于此创建提示词'
   },
   en: {
     appTitle: 'PromptMaster',
@@ -182,10 +195,23 @@ export const translations = {
     defaultPasswordNotice: 'Default password: 123456',
     createdAt: 'Created',
     updatedAt: 'Updated',
-    tagInputPlaceholder: 'Add tags, press Enter or comma to separate',
+    tagInputPlaceholder: 'Add tags, press Enter or separate with , / ; ',
     allCategories: 'All Categories',
     selectIcon: 'Select icon',
-    addCategory: 'Add Category'
+    addCategory: 'Add Category',
+    registerBtn: 'Register',
+    registerTitle: 'Create Account',
+    registerSuccess: 'Registration successful',
+    allowRegistration: 'Open Registration',
+    registrationClosed: 'Registration is closed',
+    lastLoginAt: 'Last Login',
+    neverLoggedIn: 'Never',
+    usernameMinLength: 'Username must be at least 3 characters',
+    passwordMinLength: 'Password must be at least 4 characters',
+    orText: 'or',
+    usernameExists: 'Username already exists',
+    forkPrompt: 'Fork',
+    forkPromptTitle: 'Fork Prompt'
   }
 };
 

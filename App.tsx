@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isUserMgmtOpen, setIsUserMgmtOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [forkSource, setForkSource] = useState<Prompt | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // --- INITIALIZATION ---
@@ -151,6 +152,26 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRegister = async (username: string, pass: string): Promise<boolean> => {
+    try {
+      const { user } = await api.register(username, pass);
+      setCurrentUser(user);
+      setSelectedCategoryId('all');
+
+      const [promptsData, catsData] = await Promise.all([
+        api.fetchPrompts(),
+        api.fetchCategories(),
+      ]);
+      setPrompts(promptsData);
+      setCategories(catsData);
+
+      addToast(t(lang, 'registerSuccess'), 'success');
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleGuestAccess = async () => {
     setCurrentUser(GUEST_USER);
     setSelectedCategoryId('community');
@@ -238,8 +259,31 @@ const App: React.FC = () => {
   };
 
   const handleCopyPrompt = (content: string) => {
-    navigator.clipboard.writeText(content);
-    addToast(t(lang, 'clipboardCopied'), 'success');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(content).then(() => {
+        addToast(t(lang, 'clipboardCopied'), 'success');
+      }).catch(() => {
+        fallbackCopy(content);
+      });
+    } else {
+      fallbackCopy(content);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      addToast(t(lang, 'clipboardCopied'), 'success');
+    } catch {
+      addToast('Copy failed', 'error');
+    }
+    document.body.removeChild(textarea);
   };
 
   const handleToggleFavorite = async (id: string) => {
@@ -252,6 +296,12 @@ const App: React.FC = () => {
     } catch {
       // silent
     }
+  };
+
+  const handleForkPrompt = (prompt: Prompt) => {
+    setEditingPrompt(null);
+    setForkSource(prompt);
+    setIsEditorOpen(true);
   };
 
   const handleAddCategory = async (name: string, icon?: string) => {
@@ -371,8 +421,11 @@ const App: React.FC = () => {
       } else {
         if (selectedCategoryId === 'community') {
           isInScope = prompt.visibility === 'public';
-        } else {
+        } else if (selectedCategoryId === 'all') {
           isInScope = prompt.userId === currentUser.id;
+        } else {
+          // Specific category or favorites: show own + public
+          isInScope = prompt.userId === currentUser.id || prompt.visibility === 'public';
         }
       }
 
@@ -426,7 +479,7 @@ const App: React.FC = () => {
   if (!currentUser) {
     return (
       <>
-        <Login onLogin={handleLogin} onGuestAccess={handleGuestAccess} lang={lang} />
+        <Login onLogin={handleLogin} onRegister={handleRegister} onGuestAccess={handleGuestAccess} lang={lang} />
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </>
     );
@@ -506,6 +559,7 @@ const App: React.FC = () => {
                 <button
                     onClick={() => {
                         setEditingPrompt(null);
+                        setForkSource(null);
                         setIsEditorOpen(true);
                     }}
                     className="hidden sm:flex items-center gap-2 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/20 dark:shadow-indigo-900/30 transition-all transform hover:translate-y-px hover:scale-105"
@@ -519,6 +573,7 @@ const App: React.FC = () => {
                  <button
                   onClick={() => {
                     setEditingPrompt(null);
+                    setForkSource(null);
                     setIsEditorOpen(true);
                   }}
                   className="sm:hidden flex items-center justify-center bg-indigo-600 text-white w-12 h-12 rounded-full shadow-lg shadow-indigo-500/30"
@@ -602,11 +657,13 @@ const App: React.FC = () => {
               categories={categories}
               onEdit={(p) => {
                 setEditingPrompt(p);
+                setForkSource(null);
                 setIsEditorOpen(true);
               }}
               onDelete={handleDeletePrompt}
               onCopy={handleCopyPrompt}
               onToggleFavorite={handleToggleFavorite}
+              onFork={handleForkPrompt}
               lang={lang}
               currentUser={currentUser}
             />
@@ -616,9 +673,10 @@ const App: React.FC = () => {
 
       <PromptEditor
         isOpen={isEditorOpen}
-        onClose={() => setIsEditorOpen(false)}
+        onClose={() => { setIsEditorOpen(false); setForkSource(null); }}
         onSave={handleSavePrompt}
         initialData={editingPrompt}
+        forkSource={forkSource}
         categories={categories}
         addToast={addToast}
         lang={lang}

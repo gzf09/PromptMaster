@@ -48,6 +48,23 @@ db.exec(`
     prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, prompt_id)
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  INSERT OR IGNORE INTO settings VALUES ('allow_registration', 'false');
+`);
+
+// Add new columns to users (ignore if already exist)
+try { db.exec('ALTER TABLE users ADD COLUMN created_at INTEGER DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN last_login_at INTEGER DEFAULT 0'); } catch {}
+
+// Create query indexes
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_prompts_user_id ON prompts(user_id);
+  CREATE INDEX IF NOT EXISTS idx_prompts_visibility ON prompts(visibility);
+  CREATE INDEX IF NOT EXISTS idx_prompts_category_id ON prompts(category_id);
 `);
 
 // Seed initial data if tables are empty
@@ -55,53 +72,58 @@ function seed() {
   const userCount = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
   if (userCount > 0) return;
 
-  const adminHash = bcrypt.hashSync('password', 10);
-  const janeHash = bcrypt.hashSync('password', 10);
-
-  const insertUser = db.prepare(
-    'INSERT INTO users (id, name, avatar, role, password_hash, is_first_login) VALUES (?, ?, ?, ?, ?, ?)'
-  );
-  insertUser.run('user1', 'Admin User', 'AU', 'admin', adminHash, 0);
-  insertUser.run('user2', 'Jane Doe', 'JD', 'user', janeHash, 0);
-
-  const insertCategory = db.prepare(
-    'INSERT INTO categories (id, name, type, icon, user_id) VALUES (?, ?, ?, ?, ?)'
-  );
-  insertCategory.run('coding', '编程', 'system', 'Code', null);
-  insertCategory.run('writing', '写作', 'system', 'PenTool', null);
-  insertCategory.run('image-gen', '图像生成', 'system', 'Image', null);
-  insertCategory.run('data-analysis', '数据分析', 'system', 'BarChart', null);
-  insertCategory.run('learning', '学习', 'system', 'Book', null);
-  insertCategory.run('other', '其他', 'system', 'Tag', null);
-
   const now = Date.now();
-  const insertPrompt = db.prepare(
-    'INSERT INTO prompts (id, title, content, description, category_id, tags, created_at, updated_at, user_id, author_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  );
-  insertPrompt.run(
-    'demo1', 'React Component Generator',
-    'Create a responsive React functional component with TypeScript and Tailwind CSS. Include proper type definitions, state management with hooks, and responsive design patterns.',
-    'Standard template for generating UI components.',
-    'coding', JSON.stringify(['react', 'typescript', 'tailwind', 'ui']),
-    now, now, 'user1', 'Admin User', 'public'
-  );
-  insertPrompt.run(
-    'demo2', 'Blog Post Outline',
-    'Act as a professional content strategist. Create a detailed blog post outline with sections, key points, and SEO recommendations for the given topic.',
-    'Structuring blog content efficiently.',
-    'writing', JSON.stringify(['blog', 'content', 'marketing', 'outline']),
-    now, now, 'user1', 'Admin User', 'private'
-  );
-  insertPrompt.run(
-    'demo3', 'Midjourney Portrait (Shared)',
-    '/imagine prompt: A cinematic portrait of a person in cyberpunk style, neon lighting, detailed face, 8k resolution, dramatic atmosphere --ar 2:3 --v 6',
-    'Shared by Jane',
-    'image-gen', JSON.stringify(['midjourney', 'portrait', 'cyberpunk', 'art']),
-    now, now, 'user2', 'Jane Doe', 'public'
-  );
 
-  // Add a favorite for demo
-  db.prepare('INSERT INTO user_favorites (user_id, prompt_id) VALUES (?, ?)').run('user1', 'demo1');
+  const runSeed = db.transaction(() => {
+    const adminHash = bcrypt.hashSync('password', 8);
+    const janeHash = bcrypt.hashSync('password', 8);
+
+    const insertUser = db.prepare(
+      'INSERT INTO users (id, name, avatar, role, password_hash, is_first_login, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    insertUser.run('user1', 'Admin User', 'AU', 'admin', adminHash, 0, now, 0);
+    insertUser.run('user2', 'Jane Doe', 'JD', 'user', janeHash, 0, now, 0);
+
+    const insertCategory = db.prepare(
+      'INSERT INTO categories (id, name, type, icon, user_id) VALUES (?, ?, ?, ?, ?)'
+    );
+    insertCategory.run('coding', '编程', 'system', 'Code', null);
+    insertCategory.run('writing', '写作', 'system', 'PenTool', null);
+    insertCategory.run('image-gen', '图像生成', 'system', 'Image', null);
+    insertCategory.run('data-analysis', '数据分析', 'system', 'BarChart', null);
+    insertCategory.run('learning', '学习', 'system', 'Book', null);
+    insertCategory.run('other', '其他', 'system', 'Tag', null);
+
+    const insertPrompt = db.prepare(
+      'INSERT INTO prompts (id, title, content, description, category_id, tags, created_at, updated_at, user_id, author_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    insertPrompt.run(
+      'demo1', 'React Component Generator',
+      'Create a responsive React functional component with TypeScript and Tailwind CSS. Include proper type definitions, state management with hooks, and responsive design patterns.',
+      'Standard template for generating UI components.',
+      'coding', JSON.stringify(['react', 'typescript', 'tailwind', 'ui']),
+      now, now, 'user1', 'Admin User', 'public'
+    );
+    insertPrompt.run(
+      'demo2', 'Blog Post Outline',
+      'Act as a professional content strategist. Create a detailed blog post outline with sections, key points, and SEO recommendations for the given topic.',
+      'Structuring blog content efficiently.',
+      'writing', JSON.stringify(['blog', 'content', 'marketing', 'outline']),
+      now, now, 'user1', 'Admin User', 'private'
+    );
+    insertPrompt.run(
+      'demo3', 'Midjourney Portrait (Shared)',
+      '/imagine prompt: A cinematic portrait of a person in cyberpunk style, neon lighting, detailed face, 8k resolution, dramatic atmosphere --ar 2:3 --v 6',
+      'Shared by Jane',
+      'image-gen', JSON.stringify(['midjourney', 'portrait', 'cyberpunk', 'art']),
+      now, now, 'user2', 'Jane Doe', 'public'
+    );
+
+    // Add a favorite for demo
+    db.prepare('INSERT INTO user_favorites (user_id, prompt_id) VALUES (?, ?)').run('user1', 'demo1');
+  });
+
+  runSeed();
 }
 
 seed();

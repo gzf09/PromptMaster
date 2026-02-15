@@ -152,3 +152,25 @@ export async function deleteUser(id: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+// Settings
+export async function fetchSettings(): Promise<{ allowRegistration: boolean }> {
+  return request<{ allowRegistration: boolean }>('/settings');
+}
+
+export async function updateSettings(data: { allowRegistration: boolean }): Promise<{ allowRegistration: boolean }> {
+  return request<{ allowRegistration: boolean }>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// Registration
+export async function register(username: string, password: string): Promise<{ token: string; user: User }> {
+  const data = await request<{ token: string; user: User }>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  setToken(data.token);
+  return data;
+}

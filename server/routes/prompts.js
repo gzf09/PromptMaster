@@ -94,8 +94,8 @@ router.put('/:id', authRequired, (req, res) => {
   if (!prompt) {
     return res.status(404).json({ error: 'Prompt not found' });
   }
-  if (prompt.user_id !== req.user.id) {
-    return res.status(403).json({ error: 'Not the owner' });
+  if (prompt.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not authorized' });
   }
 
   const { title, content, description, categoryId, tags, visibility } = req.body;

@@ -10,6 +10,7 @@ interface PromptListProps {
   onDelete: (id: string) => void;
   onCopy: (content: string) => void;
   onToggleFavorite: (id: string) => void;
+  onFork: (prompt: Prompt) => void;
   lang: Language;
   currentUser: User;
 }
@@ -21,6 +22,7 @@ export const PromptList: React.FC<PromptListProps> = ({
   onDelete,
   onCopy,
   onToggleFavorite,
+  onFork,
   lang,
   currentUser
 }) => {
@@ -50,6 +52,7 @@ export const PromptList: React.FC<PromptListProps> = ({
             onDelete={onDelete}
             onCopy={onCopy}
             onToggleFavorite={onToggleFavorite}
+            onFork={onFork}
             onViewDetail={setDetailPrompt}
             lang={lang}
             currentUser={currentUser}
@@ -66,6 +69,7 @@ export const PromptList: React.FC<PromptListProps> = ({
           onEdit={onEdit}
           onDelete={onDelete}
           onToggleFavorite={onToggleFavorite}
+          onFork={onFork}
           lang={lang}
           currentUser={currentUser}
         />
@@ -81,12 +85,13 @@ interface PromptCardProps {
   onDelete: (id: string) => void;
   onCopy: (content: string) => void;
   onToggleFavorite: (id: string) => void;
+  onFork: (prompt: Prompt) => void;
   onViewDetail: (prompt: Prompt) => void;
   lang: Language;
   currentUser: User;
 }
 
-const PromptCard: React.FC<PromptCardProps> = ({ prompt, categories, onEdit, onDelete, onCopy, onToggleFavorite, onViewDetail, lang, currentUser }) => {
+const PromptCard: React.FC<PromptCardProps> = React.memo(({ prompt, categories, onEdit, onDelete, onCopy, onToggleFavorite, onFork, onViewDetail, lang, currentUser }) => {
   const [copied, setCopied] = React.useState(false);
   const isGuest = currentUser.role === 'guest';
 
@@ -107,6 +112,7 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, categories, onEdit, onD
     : prompt.content;
 
   const isOwner = prompt.userId === currentUser.id;
+  const canEdit = isOwner || currentUser.role === 'admin';
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -135,13 +141,11 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, categories, onEdit, onD
                     {prompt.visibility === 'public' && <Icons.Globe size={12} className="text-emerald-500" title={t(lang, 'public')} />}
                     {prompt.visibility === 'private' && <Icons.Lock size={12} className="text-slate-400" title={t(lang, 'private')} />}
                 </div>
-                {/* Author Badge if not owner */}
-                {!isOwner && (
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                        <Icons.User size={10} className="text-slate-400"/>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{prompt.authorName}</span>
-                    </div>
-                )}
+                {/* Author Badge */}
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                    <Icons.User size={10} className="text-slate-400"/>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{prompt.authorName}</span>
+                </div>
             </div>
 
             <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mt-1 line-clamp-1 pr-12">{prompt.title}</h3>
@@ -158,7 +162,7 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, categories, onEdit, onD
                 >
                     <Icons.Star size={16} className={prompt.isFavorite ? "fill-amber-500" : ""} />
                 </button>
-                {isOwner && (
+                {canEdit && (
                     <>
                         <button
                             onClick={(e) => { e.stopPropagation(); onEdit(prompt); }}
@@ -175,6 +179,15 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, categories, onEdit, onD
                             <Icons.Trash size={16} />
                         </button>
                     </>
+                )}
+                {!isOwner && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onFork(prompt); }}
+                        className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title={t(lang, 'forkPrompt')}
+                    >
+                        <Icons.GitFork size={16} />
+                    </button>
                 )}
           </div>
       )}
@@ -210,7 +223,7 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, categories, onEdit, onD
       </div>
     </div>
   );
-};
+});
 
 // --- Prompt Detail Modal ---
 
@@ -222,14 +235,17 @@ interface PromptDetailProps {
   onEdit: (prompt: Prompt) => void;
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string) => void;
+  onFork: (prompt: Prompt) => void;
   lang: Language;
   currentUser: User;
 }
 
-const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose, onCopy, onEdit, onDelete, onToggleFavorite, lang, currentUser }) => {
+const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose, onCopy, onEdit, onDelete, onToggleFavorite, onFork, lang, currentUser }) => {
   const [copied, setCopied] = React.useState(false);
+  const [contentCopied, setContentCopied] = React.useState(false);
   const isOwner = prompt.userId === currentUser.id;
   const isGuest = currentUser.role === 'guest';
+  const canEdit = isOwner || currentUser.role === 'admin';
 
   const category = categories.find(c => c.id === prompt.categoryId);
   const categoryName = category ? category.name : t(lang, 'unknownCategory');
@@ -238,6 +254,12 @@ const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose
     onCopy(prompt.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleContentCopy = () => {
+    onCopy(prompt.content);
+    setContentCopied(true);
+    setTimeout(() => setContentCopied(false), 2000);
   };
 
   const handleDelete = () => {
@@ -267,11 +289,9 @@ const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose
                 ? <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Icons.Globe size={10} />{t(lang, 'public')}</span>
                 : <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center gap-1"><Icons.Lock size={10} />{t(lang, 'private')}</span>
               }
-              {!isOwner && (
-                <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  <Icons.User size={10} />{prompt.authorName}
-                </span>
-              )}
+              <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <Icons.User size={10} />{prompt.authorName}
+              </span>
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">{prompt.title}</h2>
             {prompt.description && (
@@ -285,9 +305,23 @@ const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-slate-950">
-          <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
-            {prompt.content}
-          </pre>
+          <div className="relative">
+            <button
+              onClick={handleContentCopy}
+              className={`absolute top-3 right-3 p-2 rounded-lg transition-all z-10
+                ${contentCopied
+                  ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }
+              `}
+              title={contentCopied ? t(lang, 'copiedBtn') : t(lang, 'copyBtn')}
+            >
+              {contentCopied ? <Icons.Check size={16} /> : <Icons.Copy size={16} />}
+            </button>
+            <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 pr-14">
+              {prompt.content}
+            </pre>
+          </div>
         </div>
 
         {/* Footer */}
@@ -319,7 +353,7 @@ const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose
                   <Icons.Star size={18} className={prompt.isFavorite ? "fill-amber-500" : ""} />
                 </button>
               )}
-              {isOwner && (
+              {canEdit && (
                 <>
                   <button
                     onClick={() => { onEdit(prompt); onClose(); }}
@@ -336,6 +370,15 @@ const PromptDetail: React.FC<PromptDetailProps> = ({ prompt, categories, onClose
                     <Icons.Trash size={18} />
                   </button>
                 </>
+              )}
+              {!isGuest && !isOwner && (
+                <button
+                  onClick={() => { onFork(prompt); onClose(); }}
+                  className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title={t(lang, 'forkPrompt')}
+                >
+                  <Icons.GitFork size={18} />
+                </button>
               )}
               <button
                 onClick={handleCopy}
